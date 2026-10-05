@@ -28,10 +28,19 @@ go run ./cmd/paleo-prep-station --addr 127.0.0.1:18133
 - `GET /specimens` 与 `POST /specimens`
 - `GET /specimens/{id}`
 - `POST /specimens/{id}/plans`
+- `GET /specimens/{id}/plans`
 - `GET /plans/{id}`
 - `POST /plans/{id}/approval`
 - `POST /plans/{id}/progress`
+- `POST /plans/{id}/cancellation`
 - `POST /specimens/{id}/release`
+- `GET /batches` 与 `POST /batches`
+- `GET /batches/{id}`
+- `POST /batches/{id}/progress`
+- `POST /batches/{id}/split`
+- `POST /batches/{id}/cancellation`
+
+多标本批次把同一地点的多份方案编入一次操作：批次内一次阶段写入共享同一阶段事实（序号、名称、说明、记录人），每份标本保留独立的比例、单调进度序列和方案/标本终态。批次写入是单一仓储事务，任一条目不合法则阶段事实和全部标本进度都不落库；单份标本完成不会提前关闭整批，只有全部成员终态批次才整体完成。批次支持拆分（源批至少保留一个成员）和取消（开放成员脱离后独立流转），成员归属与共享阶段历史永久保留。
 
 ## 本地验证
 
@@ -42,6 +51,12 @@ go run ./cmd/workflowcheck --workflow register-specimen
 go run ./cmd/workflowcheck --workflow approve-prep-plan
 go run ./cmd/workflowcheck --workflow log-preparation
 go run ./cmd/workflowcheck --workflow release-for-study
+go run ./cmd/workflowcheck --workflow batch-shared-progress
+go run ./cmd/workflowcheck --workflow batch-atomic-failure
+go run ./cmd/workflowcheck --workflow batch-split
+go run ./cmd/workflowcheck --workflow batch-cancel
+go run ./cmd/workflowcheck --workflow batch-member-cancel
+go run ./cmd/workflowcheck --workflow batch-concurrent
 ```
 
 这些检查会启动临时 HTTP 处理器并调用真实公共路由。

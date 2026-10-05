@@ -31,3 +31,35 @@ type ReleaseRequest struct {
 	Recipient  string `json:"recipient"`
 	ApprovedBy string `json:"approved_by"`
 }
+
+type CreateBatchRequest struct {
+	SiteLabel  string   `json:"site_label"`
+	Supervisor string   `json:"supervisor"`
+	PlanIDs    []string `json:"plan_ids"`
+}
+
+// BatchProgressItem 是一份标本在共享阶段中的独立进度。
+type BatchProgressItem struct {
+	PlanID  string `json:"plan_id"`
+	Percent int    `json:"percent"`
+}
+
+type BatchProgressRequest struct {
+	Stage      string              `json:"stage"`
+	Note       string              `json:"note"`
+	RecordedBy string              `json:"recorded_by"`
+	Items      []BatchProgressItem `json:"items"`
+}
+
+type SplitBatchRequest struct {
+	PlanIDs   []string `json:"plan_ids"`
+	SiteLabel string   `json:"site_label"`
+}
+
+type CancelBatchRequest struct {
+	CancelledBy string `json:"cancelled_by"`
+}
+
+type CancelPlanRequest struct {
+	CancelledBy string `json:"cancelled_by"`
+}

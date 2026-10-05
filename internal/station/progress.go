@@ -27,11 +27,15 @@ func (s *Service) LogProgress(
 		if !ok {
 			return notFoundSpecimen(plan.SpecimenID)
 		}
+		if _, batched := m.OpenBatchForPlan(planID); batched {
+			return contracts.Conflict("plan_progress_requires_batch", "进行中批次的成员必须通过批次共享阶段写入进度")
+		}
 		previous := m.ProgressForPlan(planID)
 		entry, err := domain.NewProgressEntry(
 			s.nextID("progress"),
 			plan,
 			previous,
+			domain.ProgressLink{},
 			request.Stage,
 			request.Percent,
 			request.Note,

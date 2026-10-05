@@ -26,6 +26,30 @@
     {
       "workflow_id": "release-for-study",
       "command": "go run ./cmd/workflowcheck --workflow release-for-study"
+    },
+    {
+      "workflow_id": "batch-shared-progress",
+      "command": "go run ./cmd/workflowcheck --workflow batch-shared-progress"
+    },
+    {
+      "workflow_id": "batch-atomic-failure",
+      "command": "go run ./cmd/workflowcheck --workflow batch-atomic-failure"
+    },
+    {
+      "workflow_id": "batch-split",
+      "command": "go run ./cmd/workflowcheck --workflow batch-split"
+    },
+    {
+      "workflow_id": "batch-cancel",
+      "command": "go run ./cmd/workflowcheck --workflow batch-cancel"
+    },
+    {
+      "workflow_id": "batch-member-cancel",
+      "command": "go run ./cmd/workflowcheck --workflow batch-member-cancel"
+    },
+    {
+      "workflow_id": "batch-concurrent",
+      "command": "go run ./cmd/workflowcheck --workflow batch-concurrent"
     }
   ]
 }

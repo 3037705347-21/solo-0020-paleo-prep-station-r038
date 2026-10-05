@@ -9,3 +9,7 @@ func notFoundSpecimen(id string) error {
 func notFoundPlan(id string) error {
 	return contracts.NotFound("plan_not_found", "未找到修复方案 "+id)
 }
+
+func notFoundBatch(id string) error {
+	return contracts.NotFound("batch_not_found", "未找到制备批次 "+id)
+}

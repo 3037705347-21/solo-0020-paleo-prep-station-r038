@@ -26,6 +26,8 @@ type PrepPlan struct {
 	Status         PlanStatus `json:"status"`
 	ApprovedBy     string     `json:"approved_by,omitempty"`
 	ApprovedAt     *time.Time `json:"approved_at,omitempty"`
+	CancelledBy    string     `json:"cancelled_by,omitempty"`
+	BatchID        string     `json:"batch_id,omitempty"`
 	Version        int        `json:"version"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
@@ -86,6 +88,31 @@ func (p PrepPlan) IsCompleted() bool {
 	return p.Status == PlanCompleted
 }
 
+// JoinBatch 把方案挂到进行中的制备批次上；已终态或已属于其他进行中批次的方案拒绝挂载。
+func (p *PrepPlan) JoinBatch(batchID string, now time.Time) error {
+	if batchID == "" {
+		return contracts.Internal("missing_batch_id", "批次标识未生成", nil)
+	}
+	if !p.IsOpen() {
+		return contracts.Conflict("plan_not_open_for_batch", "只有未结束的方案才能加入制备批次")
+	}
+	if p.BatchID != "" && p.BatchID != batchID {
+		return contracts.Conflict("plan_already_batched", "该方案已属于另一个进行中的制备批次")
+	}
+	p.BatchID = batchID
+	p.Version++
+	p.UpdatedAt = now.UTC()
+	return nil
+}
+
+// LeaveBatch 在批次取消或拆分时解除方案与进行中批次的归属，方案本身的状态保持不变。
+func (p *PrepPlan) LeaveBatch(batchID string, now time.Time) {
+	if p.BatchID == batchID {
+		p.BatchID = ""
+		p.UpdatedAt = now.UTC()
+	}
+}
+
 func (p *PrepPlan) Approve(approvedBy string, now time.Time) error {
 	if p.Status != PlanDraft {
 		return contracts.Conflict("plan_not_approvable", "只有草稿方案可以审批")
@@ -129,11 +156,16 @@ func (p *PrepPlan) Complete(now time.Time) error {
 	return nil
 }
 
-func (p *PrepPlan) Cancel(now time.Time) error {
+func (p *PrepPlan) Cancel(cancelledBy string, now time.Time) error {
 	if p.Status != PlanDraft {
 		return contracts.Conflict("plan_not_cancellable", "只有草稿方案可以取消")
 	}
+	operator, err := requiredText("取消人", cancelledBy, 80)
+	if err != nil {
+		return err
+	}
 	p.Status = PlanCancelled
+	p.CancelledBy = operator
 	p.Version++
 	p.UpdatedAt = now.UTC()
 	return nil

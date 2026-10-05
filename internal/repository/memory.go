@@ -12,6 +12,8 @@ type state struct {
 	plans     map[string]domain.PrepPlan
 	progress  map[string][]domain.ProgressEntry
 	releases  map[string]domain.ReleaseRecord
+	batches   map[string]domain.PrepBatch
+	stages    map[string][]domain.BatchStage
 }
 
 type MemoryRepository struct {
@@ -26,6 +28,8 @@ func NewMemory() *MemoryRepository {
 			plans:     make(map[string]domain.PrepPlan),
 			progress:  make(map[string][]domain.ProgressEntry),
 			releases:  make(map[string]domain.ReleaseRecord),
+			batches:   make(map[string]domain.PrepBatch),
+			stages:    make(map[string][]domain.BatchStage),
 		},
 	}
 }
@@ -54,6 +58,8 @@ func cloneMutation(source state) *Mutation {
 		plans:     make(map[string]domain.PrepPlan, len(source.plans)),
 		progress:  make(map[string][]domain.ProgressEntry, len(source.progress)),
 		releases:  make(map[string]domain.ReleaseRecord, len(source.releases)),
+		batches:   make(map[string]domain.PrepBatch, len(source.batches)),
+		stages:    make(map[string][]domain.BatchStage, len(source.stages)),
 	}
 	for key, value := range source.specimens {
 		copied.specimens[key] = value
@@ -66,6 +72,12 @@ func cloneMutation(source state) *Mutation {
 	}
 	for key, value := range source.releases {
 		copied.releases[key] = value
+	}
+	for key, value := range source.batches {
+		copied.batches[key] = value
+	}
+	for key, values := range source.stages {
+		copied.stages[key] = append([]domain.BatchStage(nil), values...)
 	}
 	return &Mutation{state: copied}
 }
@@ -144,6 +156,17 @@ func (m *Mutation) HasOpenPlan(specimenID string) bool {
 	return false
 }
 
+// OpenBatchForPlan 返回方案当前归属的进行中批次。批次成员记录是归属的唯一事实来源，
+// 方案上的 batch_id 只作为冗余指针，取消、拆分后可能已清空。
+func (m *Mutation) OpenBatchForPlan(planID string) (domain.PrepBatch, bool) {
+	for _, value := range m.state.batches {
+		if value.IsOpen() && value.HasMember(planID) {
+			return value, true
+		}
+	}
+	return domain.PrepBatch{}, false
+}
+
 func (m *Mutation) ProgressForPlan(planID string) []domain.ProgressEntry {
 	return append([]domain.ProgressEntry(nil), m.state.progress[planID]...)
 }
@@ -163,4 +186,35 @@ func (m *Mutation) ReleaseForSpecimen(specimenID string) (domain.ReleaseRecord, 
 
 func (m *Mutation) PutRelease(value domain.ReleaseRecord) {
 	m.state.releases[value.ID] = value
+}
+
+func (m *Mutation) GetBatch(id string) (domain.PrepBatch, bool) {
+	value, ok := m.state.batches[id]
+	return value, ok
+}
+
+func (m *Mutation) ListBatches() []domain.PrepBatch {
+	values := make([]domain.PrepBatch, 0, len(m.state.batches))
+	for _, value := range m.state.batches {
+		values = append(values, value)
+	}
+	sort.Slice(values, func(i, j int) bool {
+		if values[i].CreatedAt.Equal(values[j].CreatedAt) {
+			return values[i].ID < values[j].ID
+		}
+		return values[i].CreatedAt.Before(values[j].CreatedAt)
+	})
+	return values
+}
+
+func (m *Mutation) PutBatch(value domain.PrepBatch) {
+	m.state.batches[value.ID] = value
+}
+
+func (m *Mutation) StagesForBatch(batchID string) []domain.BatchStage {
+	return append([]domain.BatchStage(nil), m.state.stages[batchID]...)
+}
+
+func (m *Mutation) AppendStage(value domain.BatchStage) {
+	m.state.stages[value.BatchID] = append(m.state.stages[value.BatchID], value)
 }
