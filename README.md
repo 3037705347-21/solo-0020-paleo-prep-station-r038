@@ -30,8 +30,19 @@ go run ./cmd/paleo-prep-station --addr 127.0.0.1:18133
 - `POST /specimens/{id}/plans`
 - `GET /plans/{id}`
 - `POST /plans/{id}/approval`
-- `POST /plans/{id}/progress`
+- `POST /plans/{id}/progress`（批次方案可携带 `batch_stage_id` 引用共享阶段事实）
 - `POST /specimens/{id}/release`
+- `GET /prep-batches` 与 `POST /prep-batches`
+- `GET /prep-batches/{id}`
+- `POST /prep-batches/{id}/approval`
+- `POST /prep-batches/{id}/stages`
+- `POST /prep-batches/{id}/close`
+- `POST /prep-batches/{id}/cancel`
+- `POST /prep-batches/{id}/split`
+
+## 多标本制备批次
+
+负责人通过 `POST /prep-batches` 一次建立同一地点多份标本的制备批次：请求同时给出每份成员的标本资料和独立草稿方案，批次写入整体成功或整体失败。批次只共享阶段事实（`POST /prep-batches/{id}/stages`），每份标本继续保留独立方案、目标暴露比例、单调进度序列和终态；单份标本达到一百只稳定该标本，不会关闭批次，只有所有成员方案完成后显式 `close` 才会关闭。草稿批次可以整体 `cancel`（同时取消成员草稿方案），也可以把草稿成员 `split` 到新批次（原批次必须保留至少一份成员）。所有批次写入都走仓储互斥事务，并发阶段编号连续、同方案并发进度按单调规则得到确定结果。
 
 ## 本地验证
 
@@ -42,6 +53,9 @@ go run ./cmd/workflowcheck --workflow register-specimen
 go run ./cmd/workflowcheck --workflow approve-prep-plan
 go run ./cmd/workflowcheck --workflow log-preparation
 go run ./cmd/workflowcheck --workflow release-for-study
+go run ./cmd/workflowcheck --workflow prepare-multi-specimen-batch
+go run ./cmd/workflowcheck --workflow batch-concurrent-progress
+go run ./cmd/workflowcheck --workflow batch-cancel-and-split
 ```
 
 这些检查会启动临时 HTTP 处理器并调用真实公共路由。

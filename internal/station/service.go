@@ -39,6 +39,7 @@ func (s *Service) nextID(prefix string) string {
 type PlanSnapshot struct {
 	Plan     domain.PrepPlan        `json:"plan"`
 	Progress []domain.ProgressEntry `json:"progress"`
+	Batch    *domain.PrepBatch      `json:"batch,omitempty"`
 }
 
 func (s *Service) ListSpecimens(ctx context.Context) ([]domain.Specimen, error) {

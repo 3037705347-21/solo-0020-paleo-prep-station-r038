@@ -128,6 +128,76 @@
         "repository",
         "contracts"
       ]
+    },
+    {
+      "id": "prepare-multi-specimen-batch",
+      "name": "Prepare a multi-specimen batch with shared stage facts",
+      "entry": "POST /prep-batches + POST /prep-batches/{id}/approval + POST /prep-batches/{id}/stages + POST /prep-batches/{id}/close",
+      "steps": [
+        "create specimens, draft plans, members and batch in one atomic mutation",
+        "approve every draft member plan together",
+        "record shared stage facts with independent per-member percentages",
+        "keep the batch open while individual members complete independently",
+        "close the batch only after every member plan is completed"
+      ],
+      "success": "returns batch snapshots where each member keeps its own plan, percentage and stabilized state",
+      "failure": "returns conflict for a finished batch, a non-member plan, duplicate stage entries or early close",
+      "verification": "workflowcheck creates a three-member batch, shares stage facts, finishes members independently and closes once",
+      "module_ids": [
+        "entrypoint",
+        "runtimecheck",
+        "httpapi",
+        "station",
+        "domain",
+        "repository",
+        "contracts"
+      ]
+    },
+    {
+      "id": "batch-concurrent-progress",
+      "name": "Resolve concurrent batch and plan progress deterministically",
+      "entry": "concurrent POST /prep-batches/{id}/stages and POST /plans/{id}/progress",
+      "steps": [
+        "serialize all writes through the repository mutex transaction",
+        "allocate contiguous shared stage fact sequences",
+        "apply monotonic percentage rules under same-plan races",
+        "finish members concurrently without touching batch lifecycle"
+      ],
+      "success": "produces ordered stage facts, a monotonic progress trail and one successful close",
+      "failure": "losing racers receive conflict responses and regressions are never committed",
+      "verification": "workflowcheck fires parallel stage writers and parallel same-plan progress writes and asserts convergence",
+      "module_ids": [
+        "entrypoint",
+        "runtimecheck",
+        "httpapi",
+        "station",
+        "domain",
+        "repository",
+        "contracts"
+      ]
+    },
+    {
+      "id": "batch-cancel-and-split",
+      "name": "Cancel and split multi-specimen batches",
+      "entry": "POST /prep-batches/{id}/cancel + POST /prep-batches/{id}/split",
+      "steps": [
+        "reject batch creation as a whole on duplicate member catalogs",
+        "cancel a batch together with all draft member plans",
+        "reject cancellation once any member is approved",
+        "move only draft members into a new batch while the source keeps one member"
+      ],
+      "success": "cancels batch and drafts atomically, or produces a new open batch with the moved drafts",
+      "failure": "returns conflict for active members, emptying the source batch or moving non-member plans",
+      "verification": "workflowcheck verifies rollback on failed creation, draft cancellation, split boundaries and independent cancel after split",
+      "module_ids": [
+        "entrypoint",
+        "runtimecheck",
+        "httpapi",
+        "station",
+        "domain",
+        "repository",
+        "contracts"
+      ]
     }
   ],
   "complexity": {
@@ -137,6 +207,6 @@
       "error_propagation",
       "concurrency"
     ],
-    "notes": "Plan and specimen state changes share one repository mutation; duplicate catalog numbers and unfinished plans are rejected at commit time."
+    "notes": "Plan and specimen state changes share one repository mutation; duplicate catalog numbers and unfinished plans are rejected at commit time. Multi-specimen batches extend the same all-or-nothing mutation to batch, members, specimens, plans and shared stage facts; member completion is independent, close stays explicit, and cancellation and split are guarded lifecycle transitions resolved deterministically under the repository mutex."
   }
 }

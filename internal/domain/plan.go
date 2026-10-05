@@ -19,6 +19,7 @@ const (
 type PrepPlan struct {
 	ID             string     `json:"id"`
 	SpecimenID     string     `json:"specimen_id"`
+	BatchID        string     `json:"batch_id,omitempty"`
 	Objective      string     `json:"objective"`
 	Method         string     `json:"method"`
 	Adhesive       string     `json:"adhesive"`
@@ -134,6 +135,42 @@ func (p *PrepPlan) Cancel(now time.Time) error {
 		return contracts.Conflict("plan_not_cancellable", "只有草稿方案可以取消")
 	}
 	p.Status = PlanCancelled
+	p.Version++
+	p.UpdatedAt = now.UTC()
+	return nil
+}
+
+// JoinBatch marks a draft plan as belonging to a preparation batch.
+func (p *PrepPlan) JoinBatch(batchID string, now time.Time) error {
+	if batchID == "" {
+		return contracts.Internal("missing_generated_id", "批次标识未生成", nil)
+	}
+	if p.BatchID != "" && p.BatchID != batchID {
+		return contracts.Conflict("plan_already_batched", "该方案已经属于另一个制备批次")
+	}
+	if p.Status != PlanDraft {
+		return contracts.Conflict("plan_not_batchable", "只有草稿方案可以加入制备批次")
+	}
+	if p.BatchID == batchID {
+		return nil
+	}
+	p.BatchID = batchID
+	p.Version++
+	p.UpdatedAt = now.UTC()
+	return nil
+}
+
+// LeaveBatch detaches a draft plan when a batch is split. Only draft plans
+// can leave: once preparation has started, shared stage history must stay
+// attached to the original operation.
+func (p *PrepPlan) LeaveBatch(now time.Time) error {
+	if p.BatchID == "" {
+		return nil
+	}
+	if p.Status != PlanDraft {
+		return contracts.Conflict("plan_not_splittable", "只有草稿方案可以从批次中拆分")
+	}
+	p.BatchID = ""
 	p.Version++
 	p.UpdatedAt = now.UTC()
 	return nil

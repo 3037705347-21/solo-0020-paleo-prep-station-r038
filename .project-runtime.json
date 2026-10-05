@@ -26,6 +26,18 @@
     {
       "workflow_id": "release-for-study",
       "command": "go run ./cmd/workflowcheck --workflow release-for-study"
+    },
+    {
+      "workflow_id": "prepare-multi-specimen-batch",
+      "command": "go run ./cmd/workflowcheck --workflow prepare-multi-specimen-batch"
+    },
+    {
+      "workflow_id": "batch-concurrent-progress",
+      "command": "go run ./cmd/workflowcheck --workflow batch-concurrent-progress"
+    },
+    {
+      "workflow_id": "batch-cancel-and-split",
+      "command": "go run ./cmd/workflowcheck --workflow batch-cancel-and-split"
     }
   ]
 }

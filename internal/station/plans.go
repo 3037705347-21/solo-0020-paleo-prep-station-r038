@@ -96,6 +96,12 @@ func (s *Service) GetPlan(ctx context.Context, planID string) (PlanSnapshot, err
 			Plan:     plan,
 			Progress: m.ProgressForPlan(planID),
 		}
+		if plan.BatchID != "" {
+			if batch, ok := m.GetBatch(plan.BatchID); ok {
+				loaded := batch
+				snapshot.Batch = &loaded
+			}
+		}
 		return nil
 	})
 	return snapshot, err
